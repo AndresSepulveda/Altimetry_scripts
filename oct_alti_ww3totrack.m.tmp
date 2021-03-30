@@ -1,0 +1,238 @@
+%function oct_alti_ww3totrack(direww3,lonmn,lonmx,latmn,latmx,doplot)
+%
+% Reads a geographical subset of a WW3 and colocates it with altimeter track. 
+%
+% Andres Sepulveda, 30/10/2013
+%
+% 
+more off
+warning off
+close all
+
+year=YEAR;
+casenm=CASENAME;
+
+  lonmn=LONMN;
+  lonmx=LONMX;
+  latmn=LATMN;
+  latmx=LATMX;
+
+yearnm=num2str(year);
+
+dt=0.125 % Fraction of day ~3 h
+dl=.5    % Degree: equal grid size when is structured & DX=DY ?
+  
+  doplot=0;
+  niceplot=1;
+
+direww3='./Model';
+
+listfiles=readdir(direww3);
+
+for ii=1:size(listfiles,1)
+if (regexp(listfiles{ii,1},'.nc'))
+listfiles{ii,1}
+system(['ncks -O -3 ' direww3 '/' listfiles{ii,1} ' ' direww3 '/' listfiles{ii,1}]);
+end
+end
+%
+% Cut and then join!
+%
+system(['ncrcat ' direww3 '/*.nc ' direww3 '/ww3.' casenm '_' yearnm '.nc']);
+ 
+nc=netcdf([direww3 '/ww3.' casenm '_' yearnm '.nc'],'r');
+
+  alon=nc{'longitude'}(:);
+  alat=nc{'latitude'}(:);
+  time=nc{'time'}(:);
+  time0=datenum(1990,1,1);
+  time=time+time0;
+
+indxlon=find(alon <= lonmx & alon >= lonmn);
+indxlat=find(alat <= latmx & alat >= latmn );
+
+lon=alon(indxlon);
+lat=alat(indxlat);
+  hs=nc{'hs'}(:,indxlat,indxlon);
+  scale=nc{'hs'}.scale_factor;
+  fillv=nc{'hs'}._FillValue;
+  I=find(hs == fillv);
+  hs=double(hs).*scale;
+%if (listfiles{ii,1}(12:14)=='wnd')
+%  U10=nc{'U10'}(:,indxlat,indxlon);
+%  scale=nc{'U10'}.scale_factor;
+%  fillv=nc{'U10'}._FillValue;
+%  I=find(U10 == fillv);
+%  U10=double(U10).*scale;
+%  V10=nc{'V10'}(:,indxlat,indxlon);
+%  scale=nc{'V10'}.scale_factor;
+%  fillv=nc{'V10'}._FillValue;
+%  I=find(V10 == fillv);
+%  V10=double(V10).*scale;
+%  wnd=sqrt(U10.*U10+V10.*V10);
+%end % if wnd
+%if (listfiles{ii,1}(12:14)=='mss')
+% mssx=nc{'mssx'}(:,indxlat,indxlon);
+%  scale=nc{'mssx'}.scale_factor;
+%  fillv=nc{'mssx'}._FillValue;
+%  I=find(mssx == fillv);
+%  mssx=double(mssx).*scale;
+% mssy=nc{'mssy'}(:,indxlat,indxlon);
+%  scale=nc{'mssy'}.scale_factor;
+%  fillv=nc{'mssy'}._FillValue;
+%  I=find(mssy == fillv);
+%  mssy=double(mssy).*scale;
+%  mss=mssx+mssy;
+%end % if mss
+
+close(nc)
+
+
+sftime=[];
+sflat=[];
+sflon=[];
+sfhs=[];
+enes=[];
+
+mftime=[];
+mflat=[];
+mflon=[];
+mfhs=[];
+satf=[];
+
+for i = 1:9
+
+nc=netcdf(['GLOBWAVE_Altimeters_' casenm '_' yearnm '.nc'],'r');
+ssat=nc{'satellite'}(:);
+
+indxs=find(ssat == i);
+
+if length(indxs > 1)
+
+stime=nc{'time'}(:);
+slon=nc{'longitude'}(:);
+slat=nc{'latitude'}(:);
+shs=nc{'swh'}(:);
+
+stime=stime(indxs);
+slon=slon(indxs);
+slat=slat(indxs);
+shs=shs(indxs);
+
+if (size(stime,1) == 0)
+disp(['Sat' num2str(i) ': NO DATA IN AREA'])
+else
+disp(['Sat' num2str(i) ': ' num2str(size(stime,1)) ' DATA FOUND'])
+m=0;
+for ii=1:size(slon,1)
+
+slonmn=slon(ii)-dl;
+slonmx=slon(ii)+dl;
+slatmn=slat(ii)-dl;
+slatmx=slat(ii)+dl;
+stimemn=stime(ii)-dt;
+stimemx=stime(ii)+dt;
+
+indxln=find(lon <= slonmx & lon >= slonmn);
+indxlt=find(lat <= slatmx & lat >= slatmn);
+indxtm=find(time >= stimemn & time <= stimemx );
+
+if (size(indxln,1) > 0 & size(indxlt,1) > 0 & size(indxtm,1) > 0);
+
+atime=time(indxtm);
+alon=lon(indxln);
+alat=lat(indxlt);
+
+ahs1=squeeze(hs(indxtm(1),indxlt,indxln));
+ahs2=squeeze(hs(indxtm(2),indxlt,indxln));
+
+ihs1=interp2(alon,alat,ahs1,slon(ii),slat(ii)); % In dl, should be in km !!
+ihs2=interp2(alon,alat,ahs2,slon(ii),slat(ii));
+
+ihsf=interp1([ time(indxtm(1)) time(indxtm(2))],[ihs1 ihs2],stime(ii)); 
+
+if (ihsf > 0)
+sftime = [sftime; stime(ii)];
+sflat  = [sflat;  slat(ii)];
+sflon  = [sflon;  slon(ii)];
+sfhs   = [sfhs;   shs(ii)];
+%enes   = [enes;   size(indx1,1)];
+
+mftime = [mftime; stime(ii)];
+mflat  = [mflat;   slat(ii)];
+mflon  = [mflon;   slon(ii)];
+mfhs   = [mfhs;     ihsf];
+asatf  = ihsf*0.;
+asatf(:)  = i;
+satf   = [satf; asatf];
+else
+m=m+1;
+end % if MHS < 0 Land points?
+
+end % if colocation
+
+end % ii - lon
+disp(['Sat' num2str(i) ': ' num2str(m) ' DATA NOT COLLOCATED'])
+
+if (doplot == 1)
+   [yymn  mmmn ddmn ]=datevec(min([min(sftime) min(mftime)]));
+   [yymx  mmmx ddmx ]=datevec(max([max(sftime) max(mftime)]));
+
+   figure(i)
+
+if (niceplot == 1)
+   warning off   
+   addpath('/ocean/m_map');
+   addpath('/ocean/m_map/private');
+
+   m_proj('equid','lon',[lonmn lonmx],'lat',[latmn latmx]);
+   m_plot(sflon,sflat,'.r')
+   m_coast('patch',[1 1 1]/10);
+   m_grid('box','xtick',[-180:1:180],'ytick',[-90:1:90]);
+else
+   plot(sflon,sflat,'.')
+   axis([lonmn lonmx latmn latmx]);
+   grid('on');
+
+end % if niceplot
+
+title(['Colocated points for sat' num2str(i) ': ' num2str(yymn) '/' num2str(mmmn) '/' num2str(ddmn) '-' num2str(yymx) '/' num2str(mmmx) '/' num2str(ddmx)])
+xlabel('Longitude')
+ylabel('Latitude')
+%
+% [Q] How to plot overlaped tracks?
+%
+
+plotname=['Collocated_TrackSat' num2str(i) '_' casenm '_' yearnm ];
+print(plotname,'-dpng')
+end % if do plot
+
+end % if empty satfile
+else
+disp(['Sat' num2str(i) ': NO DATA IN AREA'])
+end % if data of that satellite
+
+end % sats
+
+for i=1:9
+indx=find(satf == i);
+disp(['Sat' num2str(i) ': ' num2str(length(indx)) ' DATA COLLOCATED'])
+end
+
+nc=netcdf(['Collocated_SatMod_' casenm '_' yearnm '.nc'],'c');
+nc('time')=length(sftime);
+nc{'satellite'}=ncint('time');
+nc{'satellite'}(:)=satf;
+nc{'time'}=ncint('time');
+nc{'time'}(:)=sftime;
+nc{'longitude'}=ncdouble('time');
+nc{'longitude'}(:)=sflon;
+nc{'latitude'}=ncdouble('time');
+nc{'latitude'}(:)=sflat;
+nc{'s_swh'}=ncdouble('time');
+nc{'s_swh'}(:)=sfhs;
+nc{'m_swh'}=ncdouble('time');
+nc{'m_swh'}(:)=mfhs;
+close(nc)
+
+

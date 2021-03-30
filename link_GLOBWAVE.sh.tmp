@@ -1,0 +1,15 @@
+rm ./NetCDF/*
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/01/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/02/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/03/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/04/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/05/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/06/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/07/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/08/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/09/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/10/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/11/* ./NetCDF
+cp /home/usuario/Escritorio/ftp.ifremer.fr/ifremer/cersat/products/swath/altimeters/waves/data/YEAR/12/* ./NetCDF
+
+bunzip2 ./NetCDF/*

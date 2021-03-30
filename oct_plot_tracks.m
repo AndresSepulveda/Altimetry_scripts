@@ -1,0 +1,187 @@
+clear
+close all
+more off
+
+doplot=0;
+
+year=2015;
+casenm="AllPacific";
+zoomarea=[120 296 -70.0 60.0];
+
+yearnm=num2str(year);
+
+zoommap=1;
+datadir='./';
+
+
+
+nc=netcdf(['Collocated_SatMod_' casenm '_' yearnm '.nc'],'r');
+fsat=nc{'satellite'}(:);
+ftime=nc{'time'}(:);
+flon=nc{'longitude'}(:);
+flat=nc{'latitude'}(:);
+fhss=nc{'s_swh'}(:);
+fhsm=nc{'m_swh'}(:);
+close(nc)
+
+mnlon=zoomarea(1);
+mxlon=zoomarea(2);
+mnlat=zoomarea(3);
+mxlat=zoomarea(4);
+
+allstats=[];
+for i=1:9
+
+indxs=find(fsat == i);
+
+if (length(indxs) > 1)
+
+lon=flon(indxs);
+lat=flat(indxs);
+time=ftime(indxs);
+hss=fhss(indxs);
+hsm=fhsm(indxs);
+
+disp(['Sat' num2str(i) ' ok'])
+
+if (doplot == 1)
+warning off
+addpath('/ocean/m_map')
+addpath('/ocean/m_map/private')
+
+mnc=1; % 0.02
+mxc=5; % 18.68
+
+mncd=-1; %-7.75
+mxcd=1; % 5.16
+
+
+%
+% For large areas do a zoom or it will look to crowded.
+%
+figure(2)
+subplot(3,1,1)
+scatter(lon,lat,9,hsm)
+axis(zoomarea)
+%%axis('labely')
+grid('on')
+caxis([mnc mxc])
+set(gca,'ytick',[mnlat:1:mxlat])
+colorbar()
+title(['Hs WW3 ' yearnm])
+
+subplot(3,1,2)
+scatter(lon,lat,9,hss)
+axis(zoomarea)
+%axis('nolabel')
+grid('on')
+caxis([mnc mxc])
+colorbar()
+title(['Hs Satelite ' num2str(i) ' ' casenm ' ' yearnm ])
+
+subplot(3,1,3)
+scatter(lon,lat,9,hsm-hss)
+axis(zoomarea)
+%axis('nolabel')
+grid('on')
+caxis([mncd mxcd])
+colorbar()
+title(['Hs (WW3-Satelite ' num2str(i) ')' ])
+
+filename=['Alongtrack_Scatter_AltiVsWW3_' casenm '_' yearnm];
+print(filename,'-dpng')
+
+figure
+dr= .2;
+r = [-2:dr:2];
+
+d3=(hsm-hss);
+bar(r,hist(d3,r) ./ sum(hist(d3,r)))
+[N,x]=hist(d3,r);
+axis([-1.5 1.5])
+Ndhs= N*100/sum(N);
+hist(Ndhs,r)
+title(['Satelite ' num2str(i)])
+xlabel(['Hs (WW3-Altimeter) ' casenm ' ' yearnm])
+filename=['HistDiff_AltiVsWW3_' casenm '_' yearnm];
+print('-dpng',filename)
+
+figure
+mnmn=0;
+mxmx=20;
+
+dr= .1;
+r = [mnmn:dr:mxmx];
+
+[Nm, X]=hist(hsm,r);
+nNm= Nm*100/sum(Nm);
+%%Nhs3m= N*100/nansum(N);
+[Ns, X]=hist(hss,r);
+%%Nhs3s= N*100/nansum(N);
+nNs= Ns*100/sum(Ns);
+plot(X,nNm,'xr-',X,nNs,'xg-')
+axis([0 mxmx 0 20])
+%title(['Satelite 3, ' 'N = ' num2str(nansum(N))])
+title(['Satelite ' num2str(i) ', N = ' num2str(sum(Ns))])
+legend('WW3',['Sat' num2str(i)])
+xlabel(['Hs (WW3/Altimeter) ' yearnm])
+
+filename=(['Hist_AltiWW3_' casenm '_' yearnm]);
+print('-dpng',filename)
+
+
+mnmn=0;
+mxmx=15;
+
+figure(4)
+plot(hsm,hss,'xr')
+axis([mnmn mxmx mnmn mxmx])
+title(['Hs Scatterplot WW3 - Altimeter ' casenm ' ' yearnm])
+xlabel('WW3')
+ylabel('Altimeter')
+hold on
+legend(['Sat' num2str(i)],'location','southeast')
+line([mnmn mxmx],[mnmn mxmx],'linewidth',3)
+
+filename=(['Scater_AltiVsWW3_' casenm '_' yearnm]);
+print(filename,'-dpng')
+
+mnmn=0;
+mxmx=0;
+
+%%scatplot(allhsm,allhss)
+%scattercloud(allhsm,allhss,32,1,'.k')
+%%plot(hs3m,hs3s,'xr',hs6m,hs6s,'xg',hs8m,hs8s,'xb')
+%axis([mnmn mxmx mnmn mxmx])
+%title(['Hs Scatterplot WW3 - Altimeter ' year])
+%xlabel('WW3')
+%ylabel('Altimeter')
+%hold on
+%legend('Sat3','Sat6','Sat8','location','southeast')
+%line([mnmn mxmx],[mnmn mxmx],'linewidth',1)
+%hold off
+
+%filename=(['Scater_AltiVsWW3_v2_' year]);
+%print('-dpng',filename)
+
+end % if doplot
+
+samples=length(hsm);
+bias=mean(hsm-hss);
+rmse=sqrt((1/(length(hsm)-1))*sum((hsm-hss).*(hsm-hss)));
+si=rmse/mean(hsm);
+slope=(sum(hsm.*hss)/sum(hsm.*hsm));
+anomm=abs(hsm-mean(hss));
+anoms=abs(hss-mean(hss));
+difanom=anomm+anoms;
+d=1-(sum((hsm-hss).*(hsm-hss))/sum(difanom.*difanom));
+
+alltmp=[i year samples bias rmse si slope d];
+allstats=[allstats; alltmp];
+
+end % if info
+end % for sats
+
+filestats=(['stats_AW_' casenm '_' yearnm '.mat']);
+save('-v7',filestats,'allstats')
+
